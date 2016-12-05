@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -29,6 +30,12 @@ func main() {
 			Name:   "collect",
 			Usage:  "collect and store package data",
 			Action: actionCollect,
+		},
+		{
+			Name:      "dump",
+			Usage:     "dump package metadata",
+			ArgsUsage: "[hostId]",
+			Action:    actionDump,
 		},
 	}
 
@@ -99,5 +106,42 @@ func actionCollect(c *cli.Context) error {
 	}
 
 	fmt.Println("Update Success!!")
+	return nil
+}
+
+func actionDump(c *cli.Context) error {
+	hostId := c.Args().Get(0)
+
+	conf, err := loadMackerelConfig()
+	if err != nil {
+		return err
+	}
+	apiKey := conf.Apikey
+
+	url, _ := url.Parse(conf.Apibase)
+	url.Path = fmt.Sprintf("/api/v0/hosts/%s/metadata/packages", hostId)
+
+	req, err := http.NewRequest("GET", url.String(), nil)
+	if err != nil {
+		return err
+	}
+
+	req.Header.Add("X-Api-Key", apiKey)
+	req.Header.Set("User-Agent", "mkr-meta-pkg")
+
+	client := &http.Client{}
+	client.Timeout = 30 * time.Second
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("API Request Error: %d", resp.StatusCode)
+	}
+
+	jsonData, _ := ioutil.ReadAll(resp.Body)
+	fmt.Println(string(jsonData))
 	return nil
 }

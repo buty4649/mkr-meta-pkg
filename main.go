@@ -16,8 +16,7 @@ import (
 	"gopkg.in/urfave/cli.v1"
 )
 
-type Package struct {
-	Name    string `json:"name"`
+type PackageInfo struct {
 	Version string `json:"version"`
 }
 
@@ -67,15 +66,14 @@ func actionCollect(c *cli.Context) error {
 		return err
 	}
 
-	packages := []Package{}
+	packages := map[string]PackageInfo{}
 
 	for _, line := range strings.Split(string(cmdOutput), "\n") {
 		if line == "" {
 			break
 		}
 		pkginfo := strings.Split(line, "\t")
-		pkg := Package{pkginfo[0], pkginfo[1]}
-		packages = append(packages, pkg)
+		packages[pkginfo[0]] = PackageInfo{pkginfo[1]}
 	}
 	jsonData, err := json.Marshal(packages)
 	if err != nil {
